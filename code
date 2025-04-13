@@ -1,0 +1,56 @@
+from py_ecc.bls.ciphersuites import G2ProofOfPossession as bls
+import os
+
+# ----------- Helper Functions -----------
+
+def generate_key_pair():
+    """Generates a BLS private/public key pair."""
+    sk = int.from_bytes(os.urandom(32), 'big') % bls.curve_order  # private key
+    pk = bls.SkToPk(sk)  # public key
+    return sk, pk
+
+def sign_message(private_key, message):
+    """Signs a message with the given private key."""
+    return bls.Sign(private_key, message)
+
+def verify_signature(public_key, message, signature):
+    """Verifies a signature using the public key and original message."""
+    return bls.Verify(public_key, message, signature)
+
+# ----------- Multi-client Simulation -----------
+
+NUM_CLIENTS = 3
+clients = {}
+messages = {}
+signatures = {}
+
+# 1. Each client generates a key pair and signs a message
+for i in range(1, NUM_CLIENTS + 1):
+    client_id = f'client_{i}'
+    
+    # Generate keys
+    sk, pk = generate_key_pair()
+    
+    # Store keys
+    clients[client_id] = {'sk': sk, 'pk': pk}
+    
+    # Create a message
+    message = f"This is a secure message from {client_id}".encode('utf-8')
+    messages[client_id] = message
+    
+    # Sign message
+    signature = sign_message(sk, message)
+    signatures[client_id] = signature
+
+# 2. Server verifies all signatures
+print("\n🔒 Server Verifying Signatures from All Clients:\n")
+
+for client_id in clients:
+    pk = clients[client_id]['pk']
+    message = messages[client_id]
+    signature = signatures[client_id]
+    
+    valid = verify_signature(pk, message, signature)
+    
+    status = "✅ Valid" if valid else "❌ Invalid"
+    print(f"{client_id} -> Signature Verification: {status}")
